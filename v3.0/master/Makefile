@@ -1,6 +1,6 @@
 CC=g++
 
-MASTER=master_v4.0
+MASTER=master_v3.0
 
 OBJS = master.o common.o
 
