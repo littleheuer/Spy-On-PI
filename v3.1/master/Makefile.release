@@ -1,6 +1,8 @@
 CC=g++
 
-MASTER=master_v4.0.release
+#TIME=`date + "%Y_%m_%d"`
+
+MASTER=master_0326
 
 OBJS = master.o common.o
 

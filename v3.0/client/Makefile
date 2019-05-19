@@ -1,22 +1,21 @@
 CC = g++
 
-SHDIR=../common
+OJBS = client.o common.o
 
-CFLAGS= -Wall -I $(SHDIR) -lz -lpthread
-
-OJBS = client0316.o $(SHDIR)/common.o
-
-CLIENT = client0331
+CLIENT = client_v4.0_debug
 
 RM = rm -f 
 
 .PHONY: clean
 
 $(CLIENT): $(OJBS)
-	$(CC) -o $@ $< $(CFLAGS)
+	$(CC) -o $(CLIENT) $(OJBS) -lz -pthread
 
-$(OBJS): %.o : %.c
-	$(CC) -c $< -o $@ $(CFLAGS)
+client_v4.0.o: client_v4.0.c ../common/common.h
+	$(CC) -c client_v4.0.c -o client_v4.0.o -lz -pthread
+
+common.o: ../common/common.c ../common/common.h
+	$(CC) -c ../common/common.c -o common.o -lpthread
 
 clean: 
-	$(RM) $(OJBS) $(CLIENT)
+	$(RM) $(OJBS)

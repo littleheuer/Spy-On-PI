@@ -34,6 +34,7 @@
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <pthread.h>
+#include <pwd.h>
 #define ETH_NAME "wlp2s0"
 
 int get_conf_value(char *,const char *, char *);

@@ -1,27 +1,21 @@
 CC=g++
 
-SHDIR=../common
+MASTER=master_v4.0
 
-#-I/user/include/mysql -L/usr/lib
-#$<依赖文件,$@目标文件
-
-CFLAGS= -I $(SHDIR) -I/usr/include/mysql -L/usr/lib -lpthread -lmysqlclient
-
-MASTER=master_epoll
-
-OBJS = master.o $(SHDIR)/common.o
+OBJS = master.o common.o
 
 RM = rm -f
-
-all : $(MASTER)
 
 .PHONY: clean
 
 $(MASTER): $(OBJS)
-	$(CC)  -o $@ $(OBJS) $(CFLAGS)
+	$(CC) -D _DEBUG -o $(MASTER) $(OBJS) -lpthread -I/usr/include/mysql -L/usr/lib -lmysqlclient
 
-$(OBJS): %.o : %.c
-	$(CC) -c  $< -o $@ $(CFLAGS)
+common.o: ../common/common.c ../common/common.h
+	$(CC) -D _DEBUG -c ../common/common.c -o common.o -lpthread
+
+master.o: master.c master.h ../common/common.h
+	$(CC) -D _DEUBG -c master.c -o master.o -lpthread -I/usr/include/mysql -L/usr/lib -lmysqlclient
 
 clean:
 	$(RM) $(OBJS) $(MASTER)

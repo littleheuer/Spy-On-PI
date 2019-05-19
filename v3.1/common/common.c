@@ -52,12 +52,12 @@ int socket_create(int port) {
     s_addr.sin_port = htons(port);
     s_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     if(bind(sfd, (struct sockaddr*) &s_addr, sizeof(s_addr)) < 0) {
-        //perror("socket create bind");
+        perror("socket create bind");
         close(sfd);
         return -1;
     }
     if(listen(sfd, 30) < 0) {
-        //perror("listen");
+        perror("listen");
         close(sfd);
         return -1;
     }
