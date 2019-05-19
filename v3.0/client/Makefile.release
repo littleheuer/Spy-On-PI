@@ -1,0 +1,21 @@
+CC = g++
+
+OJBS = client0316.o common.o
+
+CLIENT = client0331
+
+RM = rm -f 
+
+.PHONY: clean
+
+$(CLIENT): $(OJBS)
+	$(CC) -o $(CLIENT) $(OJBS) -lz -pthread
+
+client0316.o: client0316.c ../common/common.h
+	$(CC) -c client0316.c -o client0316.o -lz -pthread
+
+common.o: ../common/common.c ../common/common.h
+	$(CC) -c ../common/common.c -o common.o -lpthread
+
+clean: 
+	$(RM) $(OJBS)

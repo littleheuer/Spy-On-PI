@@ -1,0 +1,266 @@
+/*************************************************************************
+	> File Name: master.h
+	> Author: 
+	> Mail: 
+	> Created Time: Sat 09 Mar 2019 18:08:47 CST
+ ************************************************************************/
+#include "common.h"
+#define TIME_OUT_TIME 300000
+
+typedef struct Node{
+    struct sockaddr_in client_addr;
+    struct Node *next;
+}Node, *LinkedList;
+
+struct PRINT{
+    LinkedList head;
+    int index;
+}; 
+
+struct HEART{
+    LinkedList *list;
+    int ins;
+    int *sum;
+    int port_C;
+};
+
+//处理ip字段为数字
+int transip(char *sip, int *ip) {
+    if(sip == NULL) return -1;
+    char temp[4];
+    int count = 0;
+    while (1) {
+        int index = 0;
+        while(*sip != '\0' && *sip != '.' && count < 4) {
+            temp[index++] = *sip;
+            sip++;
+        }
+        if (index == 4) return -1;
+        temp[index] = '\0';
+        ip[count] = atoi(temp);
+        printf("ip[%d] = %d\n",count, ip[count]);
+        count++;
+        if (*sip == '\0') {
+            if (count == 4) return 0;
+        } else {
+            sip++;
+        }
+    }
+    printf("\n");
+    return 0;
+}
+
+
+int insert(LinkedList head, Node *node) {
+    Node *p;
+    p = head;
+    while (p->next != NULL) {
+       // printf("insert %s\n", inet_ntoa(p->next->client_addr.sin_addr));
+        p = p->next;
+
+    }
+    p->next = node;
+    return 1;
+}
+
+//查找最短链
+int find_min(int *sum, int ins) {
+    int ans = 0;
+    for (int i = 0; i < ins; i++) {
+        if (*(sum +i) < *(sum + ans)) {
+            ans = i;
+        }
+    }
+    return ans;
+}
+
+
+void *print(void *arg) {
+    struct PRINT *print_para = (struct PRINT *)arg;
+    int index = print_para->index;
+    printf("index = %d, %d\n", index, print_para->index);
+    char filename[50] = {0};
+    sprintf(filename, "./%d.log", index);
+    int temp = 0;
+    while (1) {
+        FILE *file = fopen(filename, "w");
+        Node *p = print_para->head;
+        fprintf(file, "%d\n", temp++);
+        while (p -> next != NULL) {
+            //printf("index=%d,%s:%d\n", index, inet_ntoa(p->next->client_addr.sin_addr), ntohs(p->next->client_addr.sin_port));
+            p = p->next;
+            fprintf(file, "%s:%d\n", inet_ntoa(p->client_addr.sin_addr), ntohs(p->client_addr.sin_port));
+        }
+        fclose(file);
+        sleep(1);
+    }
+
+    return NULL;
+}
+
+//查重
+int check(LinkedList *head, struct sockaddr_in addr, int ins) {
+    for(int i = 0; i < ins; i++) {
+        Node *p =head[i];
+        while(p->next) {
+            if(addr.sin_addr.s_addr == p->next->client_addr.sin_addr.s_addr) {
+                printf("%s\n **in list** ", inet_ntoa(addr.sin_addr));
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+int connect_sock_test_bak(struct sockaddr_in addr) {
+    int fd;
+    if((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("socket connetc test");
+        return -1;
+    }
+    if(connect(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+        close(fd);
+        return 1;
+    }
+    close(fd);
+    printf("connect test\n");
+    return 0;
+}
+
+int connect_sock_test(struct sockaddr_in addr, int port) {
+    int fd;
+    if((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("socket connetc test");
+        return -1;
+    }
+    
+    int error = -1, len = sizeof(int);
+    struct timeval tm;
+    fd_set set;
+    unsigned long ul = 1;
+    ioctl(fd, FIONBIO, &ul);
+    bool ret = false;
+    addr.sin_port = htons(port);
+
+    if(connect(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+        tm.tv_sec = 0;
+        tm.tv_usec = TIME_OUT_TIME;
+        FD_ZERO(&set);
+        FD_SET(fd, &set);
+        if(select(fd + 1, NULL, &set, NULL, &tm) > 0) {
+            //信息返回在error中
+            getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, (socklen_t *)&len);
+            if(0 == error) ret = true;
+            else ret = false;
+        } else ret = false;
+    } else ret = false;
+    //ul = 0;
+    //ioctl(fd, FIONBIO, &ul);
+    if(!ret) {
+        close(fd);
+        //fprintf(stderr, "Cannot connect the client\n");
+        return 1;
+    }
+    close(fd);
+    printf("connect test\n");
+    return 0;
+}
+void *heart_beat(void *arg) {
+    struct HEART *heart = (struct HEART *) arg;
+    printf("heart ind=%d\n", heart->ins);
+    while (1) {
+        Node *p = NULL, *pre = NULL;
+        for(int i = 0; i < heart->ins; i++) {
+            p = heart->list[i];
+            while(p && p->next) {
+                pre = p;
+                p = p->next;
+                if(connect_sock_test(p->client_addr, heart->port_C)) {
+                    printf("%s:%d not online\n", inet_ntoa(p->client_addr.sin_addr), ntohs(p->client_addr.sin_port));
+                    pre->next = p->next;
+                    free(p);
+                    p = pre;
+                    heart->sum[i]--;
+                } else {
+                    printf("%s:%d online\n", inet_ntoa(p->client_addr.sin_addr), ntohs(p->client_addr.sin_port));
+                }
+            }
+        }
+        sleep(5);
+    }
+    return NULL;
+}
+
+struct sig_Node {
+    int sig_port;
+    struct sockaddr_in addr;
+};
+
+void *sig(void *argv) {
+    struct sig_Node *sig_node = (struct sig_Node *) argv;
+    int connect_fd;
+    char host[30] = {0};
+    strcpy(host, inet_ntoa(sig_node->addr.sin_addr));
+    printf("发送信号给%s\n", host);
+    if((connect_fd = socket_connect(sig_node->sig_port, host)) < 0) {
+        perror("sig connect");
+        return NULL;
+    }
+    char buffer[10] = {0};
+    for(int i = 100; i < 103; i++) {
+        memset(buffer, 0, sizeof(buffer));
+        //strcpy(buffer, itoa(i));
+        snprintf(buffer, sizeof(buffer), "%d", i);
+        send(connect_fd, buffer, sizeof(buffer), 0);
+        recv(connect_fd, buffer, sizeof(buffer), 0);
+    }
+}
+
+struct Recv {
+    int file_port;
+    struct sockaddr_in addr;
+};
+
+void *recv_file(void *argv) {
+    struct Recv *recv_node = (struct Recv *) argv;
+    int fd = socket_create(recv_node->file_port);
+    char ip[100] = {0};
+    strcpy(ip, inet_ntoa(recv_node->addr.sin_addr));
+    if(fd < 0) {
+        perror("recv file fd");
+        return NULL;
+    }
+    int data;
+    char buffer[1024] = {0};
+    int socket_fd;
+    while(1) {
+        if((socket_fd = accept(fd, NULL, NULL)) < 0) {
+            perror("recv accept");
+            continue;
+        }
+        recv(socket_fd, buffer, sizeof(buffer), 0);
+        char file_name[100];
+        strcpy(file_name, buffer);
+        strcat(ip, file_name);
+        FILE *fp = NULL;
+        fp = fopen(ip, "w+");
+        if(fp < 0) {
+            perror("sever fopen");
+            return NULL;
+        }
+        while (1) {
+            memset(buffer, 0, sizeof(buffer));
+            data = recv(fd, buffer, sizeof(buffer), 0);
+            if(data <= 0) {
+                close(fd);
+                fclose(fp);
+                return NULL;
+            }
+            buffer[data] = '\0';
+            fprintf(fp, "%s\n", buffer);
+        }    
+
+    }
+
+    
+}
