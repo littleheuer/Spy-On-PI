@@ -4,9 +4,9 @@ SHDIR=../common
 
 CFLAGS= -Wall -I $(SHDIR) -lz -lpthread
 
-OJBS = client0316.o $(SHDIR)/common.o
+OJBS = client.o $(SHDIR)/common.o
 
-CLIENT = client0331
+CLIENT = client_v3.1
 
 RM = rm -f 
 
